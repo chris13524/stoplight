@@ -4,16 +4,24 @@ import type { NextPage } from 'next'
 import Head from 'next/head'
 import { useEffect, useState } from 'react'
 import styles from './index.module.css'
+import { Switch } from '@mantine/core'
+import { useLocalStorage } from '@mantine/hooks';
 
 const sc = StringCodec();
 
+const lights: Light[] = ["red", "yellow", "green"];
+type Light = "red" | "yellow" | "green";
+
+const ALL_OFF: { [LightKey in Light]: boolean } = { red: false, yellow: false, green: false };
+
 const Home: NextPage = () => {
-  const [stoplight, setStoplight] = useState({ red: false, yellow: false, green: false });
+  const [stoplight, setStoplight] = useState(ALL_OFF);
   const [kv, setKv] = useState<KV | null>();
+  const [mode, setMode] = useLocalStorage({ key: "mode", defaultValue: false });
 
   useEffect(() => {
     connect({
-      servers: "tls://connect.ngs.global",
+      servers: "connect.ngs.global",
       authenticator: credsAuthenticator(
         new TextEncoder().encode(process.env.NEXT_PUBLIC_CREDS),
       ),
@@ -29,9 +37,20 @@ const Home: NextPage = () => {
   }, []);
 
   const update = (change: Partial<typeof stoplight>) => {
-    console.log("updated:", change);
-    kv?.put("stoplight", sc.encode(JSON.stringify({ ...stoplight, ...change })));
+    const newStoplight = { ...stoplight, ...change };
+    setStoplight(newStoplight); // prevent rapid button pressing from overwriting each other
+    kv?.put("stoplight", sc.encode(JSON.stringify(newStoplight)));
   };
+
+  const clicked = (light: Light) => {
+    if (mode) {
+      update({ ...ALL_OFF, [light]: true });
+    } else {
+      update({ [light]: !stoplight[light] });
+    }
+  };
+
+  const lightClassName = (light: Light) => styles[light] + ' ' + (stoplight[light] ? styles.lit : '');
 
   return (
     <div className={styles.stoplight}>
@@ -39,12 +58,11 @@ const Home: NextPage = () => {
         <title>Stoplight</title>
       </Head>
 
-      <div className={styles.red + ' ' + (stoplight.red ? styles.lit : '')} onClick={() => update({ red: !stoplight.red })}></div>
-      <div className={styles.yellow + ' ' + (stoplight.yellow ? styles.lit : '')} onClick={() => update({ yellow: !stoplight.yellow })}></div>
-      <div className={styles.green + ' ' + (stoplight.green ? styles.lit : '')} onClick={() => update({ green: !stoplight.green })}></div>
-      {JSON.stringify(stoplight)}
+      {lights.map(color => (<div key={color} className={lightClassName(color)} onClick={() => clicked(color)}></div>))}
+
+      <Switch label="Toggle Mode" checked={mode} onChange={e => setMode(e.currentTarget.checked)} />
     </div>
-  )
-}
+  );
+};
 
 export default Home;

@@ -18,6 +18,8 @@ const Home: NextPage = () => {
   const [stoplight, setStoplight] = useState(ALL_OFF);
   const [kv, setKv] = useState<KV | null>();
   const [mode, setMode] = useLocalStorage({ key: "mode", defaultValue: false });
+  const [clockKv, setClockKv] = useState<KV | null>();
+  const [clockEnabled, setClockEnabled] = useState(false);
 
   useEffect(() => {
     connect({
@@ -27,6 +29,16 @@ const Home: NextPage = () => {
       ),
     }).then(async nc => {
       const js = nc.jetstream();
+
+      (async () => {
+        const kv = await js.views.kv("clock", { history: 5, maxBucketSize: 1000 });
+        setClockKv(kv);
+        const watch = await kv.watch();
+        for await (const e of watch) {
+          setClockEnabled(JSON.parse(sc.decode(e.value)));
+        }
+      })();
+
       const kv = await js.views.kv("stoplight", { history: 5, maxBucketSize: 1000 });
       setKv(kv);
       const watch = await kv.watch();
@@ -40,6 +52,11 @@ const Home: NextPage = () => {
     const newStoplight = { ...stoplight, ...change };
     setStoplight(newStoplight); // prevent rapid button pressing from overwriting each other
     kv?.put("stoplight", sc.encode(JSON.stringify(newStoplight)));
+  };
+
+  const updateClockEnabled = (clockEnabled: boolean) => {
+    setClockEnabled(clockEnabled);
+    clockKv?.put("clock", sc.encode(JSON.stringify(clockEnabled)));
   };
 
   const clicked = (light: Light) => {
@@ -61,6 +78,7 @@ const Home: NextPage = () => {
       {lights.map(color => (<div key={color} className={lightClassName(color)} onClick={() => clicked(color)}></div>))}
 
       <Switch label="Toggle Mode" checked={mode} onChange={e => setMode(e.currentTarget.checked)} />
+      <Switch label="Toggle Clock" checked={clockEnabled} onChange={e => updateClockEnabled(e.currentTarget.checked)} />
     </div>
   );
 };

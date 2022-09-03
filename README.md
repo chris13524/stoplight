@@ -6,6 +6,12 @@ The Raspberry Pi runs a Deno script (`rpi.ts`) which controls three 120V relays 
 
 The app component is developed using Next.js, and can be used from any browser with Internet connectivity or from your phone. The app is deployed to Vercel for convenience.
 
+## Usage
+
+```bash
+NEXT_PUBLIC_CREDS=$(cat default.creds) npm run dev
+```
+
 ## TODO
 
 - Automate updates to RPi, move Docker stuff into the repo

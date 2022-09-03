@@ -16,12 +16,28 @@ const nc = await connect({
 });
 
 const js = nc.jetstream();
+
+// TODO share types
+type Lights = {
+  red: boolean;
+  yellow: boolean;
+  green: boolean;
+};
+type Clock = boolean;
+
+let clock: Clock = false;
+(async () => {
+  const kv = await js.views.kv("clock", { history: 5, maxBucketSize: 1000 });
+  const watch = await kv.watch();
+  for await (const e of watch) {
+    clock = JSON.parse(sc.decode(e.value));
+  }
+})();
+
 const kv = await js.views.kv("stoplight", { history: 5, maxBucketSize: 1000 });
 
-while (true) {
-  const date = new Date();
-  update(date);
-  await new Promise(resolve => setTimeout(resolve, 1000));
+async function setStoplight(lights: Lights) {
+  await kv?.put("stoplight", sc.encode(JSON.stringify(lights)));
 }
 
 async function update(date: Date) {
@@ -33,12 +49,10 @@ async function update(date: Date) {
   });
 }
 
-interface Lights {
-  red: boolean;
-  yellow: boolean;
-  green: boolean;
-}
-
-async function setStoplight(lights: Lights) {
-  await kv?.put("stoplight", sc.encode(JSON.stringify(lights)));
+while (true) {
+  const date = new Date();
+  if (clock) {
+    update(date);
+  }
+  await new Promise(resolve => setTimeout(resolve, 1000));
 }

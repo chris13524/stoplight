@@ -4,7 +4,7 @@ import {
   StringCodec,
 } from "https://deno.land/x/nats/src/mod.ts";
 
-import { getUnixTime } from "https://esm.sh/date-fns";
+import { getHours } from "https://esm.sh/date-fns";
 
 const sc = StringCodec();
 
@@ -41,7 +41,7 @@ async function setStoplight(lights: Lights) {
 }
 
 async function update(date: Date) {
-  const time = getUnixTime(date);
+  const time = getHours(date) / 3;
   await setStoplight({
     red: (time >> 0 & 0b1) == 1,
     yellow: (time >> 1 & 0b1) == 1,

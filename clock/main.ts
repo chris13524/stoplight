@@ -43,9 +43,9 @@ async function setStoplight(lights: Lights) {
 async function update(date: Date) {
   const time = getHours(date) / 3;
   await setStoplight({
-    red: (time >> 0 & 0b1) == 1,
+    green: (time >> 0 & 0b1) == 1,
     yellow: (time >> 1 & 0b1) == 1,
-    green: (time >> 2 & 0b1) == 1,
+    red: (time >> 2 & 0b1) == 1,
   });
 }
 

@@ -14,7 +14,7 @@ type Light = "red" | "yellow" | "green";
 
 const ALL_OFF: { [LightKey in Light]: boolean } = { red: false, yellow: false, green: false };
 
-type Mode = "manual" | "clock" | "eth";
+type Mode = "manual" | "clock" | "eth"; // TODO share type w/ main.ts
 
 const Home: NextPage = () => {
   const [stoplight, setStoplight] = useState(ALL_OFF);

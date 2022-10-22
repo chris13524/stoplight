@@ -17,6 +17,8 @@ const nc = await connect({
 
 const js = nc.jetstream();
 
+// TODO rename folder to "stoplight-control"
+
 // TODO share types
 type Lights = {
   red: boolean;
@@ -93,5 +95,8 @@ while (true) {
   } else if ((mode as Mode) == "eth") {
     updateEth();
   }
+
+  // TODO make this update immediatly, not after potentially 30 seconds
+  // CoinGecko allows 50 calls/minute: https://www.coingecko.com/en/api/documentation
   await new Promise(resolve => setTimeout(resolve, mode == "eth" ? 30000 : 1000));
 }

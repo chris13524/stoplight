@@ -4,7 +4,7 @@ import type { NextPage } from 'next'
 import Head from 'next/head'
 import { useEffect, useState } from 'react'
 import styles from './index.module.css'
-import { Switch } from '@mantine/core'
+import { Select, Switch } from '@mantine/core'
 import { useLocalStorage } from '@mantine/hooks';
 
 const sc = StringCodec();
@@ -14,12 +14,14 @@ type Light = "red" | "yellow" | "green";
 
 const ALL_OFF: { [LightKey in Light]: boolean } = { red: false, yellow: false, green: false };
 
+type Mode = "manual" | "clock" | "eth";
+
 const Home: NextPage = () => {
   const [stoplight, setStoplight] = useState(ALL_OFF);
   const [kv, setKv] = useState<KV | null>();
-  const [mode, setMode] = useLocalStorage({ key: "mode", defaultValue: false });
-  const [clockKv, setClockKv] = useState<KV | null>();
-  const [clockEnabled, setClockEnabled] = useState(false);
+  const [manMode, setManMode] = useLocalStorage({ key: "mode", defaultValue: false });
+  const [modeKv, setModeKv] = useState<KV | null>();
+  const [mode, setMode] = useState<Mode>("manual");
 
   useEffect(() => {
     connect({
@@ -31,11 +33,11 @@ const Home: NextPage = () => {
       const js = nc.jetstream();
 
       (async () => {
-        const kv = await js.views.kv("clock", { history: 5, maxBucketSize: 1000 });
-        setClockKv(kv);
+        const kv = await js.views.kv("mode", { history: 5, maxBucketSize: 1000 });
+        setModeKv(kv);
         const watch = await kv.watch();
         for await (const e of watch) {
-          setClockEnabled(JSON.parse(sc.decode(e.value)));
+          setMode(JSON.parse(sc.decode(e.value)));
         }
       })();
 
@@ -54,13 +56,13 @@ const Home: NextPage = () => {
     kv?.put("stoplight", sc.encode(JSON.stringify(newStoplight)));
   };
 
-  const updateClockEnabled = (clockEnabled: boolean) => {
-    setClockEnabled(clockEnabled);
-    clockKv?.put("clock", sc.encode(JSON.stringify(clockEnabled)));
+  const updateMode = (mode: Mode) => {
+    setMode(mode);
+    modeKv?.put("mode", sc.encode(JSON.stringify(mode)));
   };
 
   const clicked = (light: Light) => {
-    if (mode) {
+    if (manMode) {
       update({ ...ALL_OFF, [light]: true });
     } else {
       update({ [light]: !stoplight[light] });
@@ -77,8 +79,8 @@ const Home: NextPage = () => {
 
       {lights.map(color => (<div key={color} className={lightClassName(color)} onClick={() => clicked(color)}></div>))}
 
-      <Switch label="Toggle Mode" checked={mode} onChange={e => setMode(e.currentTarget.checked)} />
-      <Switch label="Toggle Clock" checked={clockEnabled} onChange={e => updateClockEnabled(e.currentTarget.checked)} />
+      <Switch label="Toggle Mode" checked={manMode} onChange={e => setManMode(e.currentTarget.checked)} />
+      <Select value={mode} onChange={updateMode} data={["manual", "clock", "eth"]} />
     </div>
   );
 };

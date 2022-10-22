@@ -23,14 +23,14 @@ type Lights = {
   yellow: boolean;
   green: boolean;
 };
-type Clock = boolean;
+export type Mode = "manual" | "clock" | "eth";
 
-let clock: Clock = false;
+let mode: Mode = "manual";
 (async () => {
-  const kv = await js.views.kv("clock", { history: 5, maxBucketSize: 1000 });
+  const kv = await js.views.kv("mode", { history: 5, maxBucketSize: 1000 });
   const watch = await kv.watch();
   for await (const e of watch) {
-    clock = JSON.parse(sc.decode(e.value));
+    mode = JSON.parse(sc.decode(e.value));
   }
 })();
 
@@ -40,7 +40,8 @@ async function setStoplight(lights: Lights) {
   await kv?.put("stoplight", sc.encode(JSON.stringify(lights)));
 }
 
-async function update(date: Date) {
+async function updateClock() {
+  const date = new Date();
   const time = getHours(date) / 3;
   await setStoplight({
     green: (time >> 0 & 0b1) == 1,
@@ -49,10 +50,48 @@ async function update(date: Date) {
   });
 }
 
-while (true) {
-  const date = new Date();
-  if (clock) {
-    update(date);
+async function updateEth() {
+  const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=ethereum");
+  const json = await res.json();
+  const price = json[0]["price_change_percentage_24h"];
+  if (price >= 1) {
+    await setStoplight({
+      green: true,
+      yellow: false,
+      red: false,
+    });
+  } else if (price > 0 && price < 1) {
+    await setStoplight({
+      green: true,
+      yellow: true,
+      red: false,
+    });
+  } else if (price > -0.1 && price < 0.1) {
+    await setStoplight({
+      green: false,
+      yellow: true,
+      red: false,
+    });
+  } else if (price < 0 && price > -1) {
+    await setStoplight({
+      green: false,
+      yellow: true,
+      red: true,
+    });
+  } else {
+    await setStoplight({
+      green: false,
+      yellow: false,
+      red: true,
+    });
   }
-  await new Promise(resolve => setTimeout(resolve, 1000));
+}
+
+while (true) {
+  if ((mode as Mode) == "clock") {
+    updateClock();
+  } else if ((mode as Mode) == "eth") {
+    updateEth();
+  }
+  await new Promise(resolve => setTimeout(resolve, mode == "eth" ? 30000 : 1000));
 }

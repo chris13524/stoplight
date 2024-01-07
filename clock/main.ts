@@ -42,6 +42,18 @@ async function setStoplight(lights: Lights) {
   await kv?.put("stoplight", sc.encode(JSON.stringify(lights)));
 }
 
+Deno.serve({ port: 8080 }, async (request: Request): Promise<Response> => {
+  if (request.method == "POST") {
+    await setStoplight(await request.json());
+    return new Response(null, { status: 204 });
+  } else if (request.method == "GET") {
+    const state = sc.decode(await kv?.get("stoplight"));
+    return new Response(state, { status: 200 });
+  } else {
+    return new Response("Method not allowed", { status: 405 });
+  }
+});
+
 async function updateClock() {
   const date = new Date();
   const time = getHours(date) / 3;
